@@ -3,6 +3,7 @@ SUN2012pascalformat/*
 output_file/*
 output/*
 Rent3D-CVPR2015/*
+cocoapi/*
 logs/
 *.pth
 *.so
