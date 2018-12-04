@@ -60,7 +60,7 @@ COCO_MODEL_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.pth")
 # Directory to save logs and model checkpoints, if not provided
 # through the command line argument --logs
 DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
-DEFAULT_DATASET_YEAR = "2014"
+DEFAULT_DATASET_YEAR = "2017"
 
 ############################################################
 #  Configurations
@@ -82,7 +82,7 @@ class CocoConfig(Config):
     # GPU_COUNT = 8
 
     # Number of classes (including background)
-    NUM_CLASSES = 1 + 80  # COCO has 80 classes
+    NUM_CLASSES = 1 + 8 + 2  # COCO has 80 classes
 
 
 ############################################################
@@ -115,6 +115,7 @@ class CocoDataset(utils.Dataset):
         if not class_ids:
             # All classes
             class_ids = sorted(coco.getCatIds())
+        # print(sorted(coco.getCatIds()))
 
         # All images or a subset?
         if class_ids:
@@ -472,20 +473,27 @@ if __name__ == '__main__':
 
     # Load weights
     print("Loading weights ", model_path)
-    model.load_weights(model_path)
+    # model.load_weights(model_path)
+    pretrained_state = torch.load(model_path)
+    model_state = model.state_dict()
+
+    pretrained_state = { k:v for k,v in pretrained_state.items() if k in model_state and v.size() == model_state[k].size() }
+    model_state.update(pretrained_state)
+    model.load_state_dict(model_state)
 
     # Train or evaluate
     if args.command == "train":
         # Training dataset. Use the training set and 35K from the
         # validation set, as as in the Mask RCNN paper.
         dataset_train = CocoDataset()
-        dataset_train.load_coco(args.dataset, "train", year=args.year, auto_download=args.download)
-        dataset_train.load_coco(args.dataset, "valminusminival", year=args.year, auto_download=args.download)
+        dataset_train.load_coco(args.dataset, "train", year=args.year, auto_download=args.download, class_ids=[62,63,65,67,72,73,76,84,91,92])
+        dataset_train.load_coco('/home/steward/MSCOCO', "train", year=args.year, auto_download=args.download, class_ids=[62,63,65,67,72,73,76,84])
+        # dataset_train.load_coco(args.dataset, "valminusminival", year=args.year, auto_download=args.download)
         dataset_train.prepare()
 
         # Validation dataset
         dataset_val = CocoDataset()
-        dataset_val.load_coco(args.dataset, "minival", year=args.year, auto_download=args.download)
+        dataset_val.load_coco('/home/steward/MSCOCO', "val", year=args.year, auto_download=args.download)
         dataset_val.prepare()
 
         # *** This training schedule is an example. Update to your needs ***
@@ -494,7 +502,7 @@ if __name__ == '__main__':
         print("Training network heads")
         model.train_model(dataset_train, dataset_val,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=40,
+                    epochs=10,
                     layers='heads')
 
         # Training - Stage 2
@@ -502,7 +510,7 @@ if __name__ == '__main__':
         print("Fine tune Resnet stage 4 and up")
         model.train_model(dataset_train, dataset_val,
                     learning_rate=config.LEARNING_RATE,
-                    epochs=120,
+                    epochs=20,
                     layers='4+')
 
         # Training - Stage 3
@@ -510,7 +518,7 @@ if __name__ == '__main__':
         print("Fine tune all layers")
         model.train_model(dataset_train, dataset_val,
                     learning_rate=config.LEARNING_RATE / 10,
-                    epochs=160,
+                    epochs=20,
                     layers='all')
 
     elif args.command == "evaluate":
