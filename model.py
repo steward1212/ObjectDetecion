@@ -783,7 +783,12 @@ def refine_detections(rois, probs, deltas, window, config):
     # Filter out low confidence boxes
     if config.DETECTION_MIN_CONFIDENCE:
         keep_bool = keep_bool & (class_scores >= config.DETECTION_MIN_CONFIDENCE)
-    keep = torch.nonzero(keep_bool)[:,0]
+
+    if torch.nonzero(keep_bool).size()[0]:
+        keep = torch.nonzero(keep_bool)[:,0]
+    else:
+        keep = torch.from_numpy(np.array([1]))
+    # keep = torch.nonzero(keep_bool)[:,0]
 
     # Apply per-class NMS
     pre_nms_class_ids = class_ids[keep.data]

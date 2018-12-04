@@ -24,7 +24,7 @@ MODEL_DIR = os.path.join(ROOT_DIR, "logs")
 # Path to trained weights file
 # Download this file and place in the root of your
 # project (See README file for details)
-COCO_MODEL_PATH = os.path.join(ROOT_DIR, "logs/coco20181203T1615/mask_rcnn_coco_0019.pth")
+COCO_MODEL_PATH = os.path.join(ROOT_DIR, "logs/coco20181203T1615/mask_rcnn_coco_0020.pth")
 # /home/steward/pytorch-mask-rcnn/logs/coco20181202T1943/rcnn/logs/rcnn/logs/coco20181203T1615//
 # Directory of images to run detection on
 IMAGE_DIR = os.path.join(ROOT_DIR, "images")
@@ -93,6 +93,7 @@ file_names = next(os.walk(IMAGE_DIR))[2]
 # figsize=(16, 16)
 # _, ax = plt.subplots(1, figsize=figsize)
 for i, (file_name) in enumerate(file_names):
+  print(file_name)
   image = skimage.io.imread(os.path.join(IMAGE_DIR, file_name))
 
   # Run detection
