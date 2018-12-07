@@ -4,6 +4,7 @@ output_file/*
 output/*
 Rent3D-CVPR2015/*
 cocoapi/*
+mask_data/*
 logs/
 *.pth
 *.so

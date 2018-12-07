@@ -827,7 +827,7 @@ def refine_detections(rois, probs, deltas, window, config):
                         class_ids[keep.data].unsqueeze(1).float(),
                         class_scores[keep.data].unsqueeze(1)), dim=1)
 
-    return result
+    return result, keep.data
 
 
 def detection_layer(config, rois, mrcnn_class, mrcnn_bbox, image_meta):
@@ -843,9 +843,9 @@ def detection_layer(config, rois, mrcnn_class, mrcnn_bbox, image_meta):
 
     _, _, window, _ = parse_image_meta(image_meta)
     window = window[0]
-    detections = refine_detections(rois, mrcnn_class, mrcnn_bbox, window, config)
+    detections, index = refine_detections(rois, mrcnn_class, mrcnn_bbox, window, config)
 
-    return detections
+    return detections, index
 
 
 ############################################################
@@ -930,6 +930,7 @@ class Classifier(nn.Module):
 
     def forward(self, x, rois):
         x = pyramid_roi_align([rois]+x, self.pool_size, self.image_shape)
+        roi = x
         x = self.conv1(x)
         x = self.bn1(x)
         x = self.relu(x)
@@ -938,13 +939,14 @@ class Classifier(nn.Module):
         x = self.relu(x)
 
         x = x.view(-1,1024)
+        bfc = x
         mrcnn_class_logits = self.linear_class(x)
         mrcnn_probs = self.softmax(mrcnn_class_logits)
 
         mrcnn_bbox = self.linear_bbox(x)
         mrcnn_bbox = mrcnn_bbox.view(mrcnn_bbox.size()[0], -1, 4)
 
-        return [mrcnn_class_logits, mrcnn_probs, mrcnn_bbox]
+        return [mrcnn_class_logits, mrcnn_probs, mrcnn_bbox, roi]
 
 class Mask(nn.Module):
     def __init__(self, depth, pool_size, image_shape, num_classes):
@@ -1618,7 +1620,7 @@ class MaskRCNN(nn.Module):
         molded_images = Variable(molded_images, volatile=True)
 
         # Run object detection
-        detections, mrcnn_mask = self.predict([molded_images, image_metas], mode='inference')
+        detections, mrcnn_mask, my_bfc, index = self.predict([molded_images, image_metas], mode='inference')
 
         # Convert to numpy
         detections = detections.data.cpu().numpy()
@@ -1636,7 +1638,7 @@ class MaskRCNN(nn.Module):
                 "scores": final_scores,
                 "masks": final_masks,
             })
-        return results
+        return results, my_bfc, index
 
     def predict(self, input, mode):
         molded_images = input[0]
@@ -1689,11 +1691,11 @@ class MaskRCNN(nn.Module):
         if mode == 'inference':
             # Network Heads
             # Proposal classifier and BBox regressor heads
-            mrcnn_class_logits, mrcnn_class, mrcnn_bbox = self.classifier(mrcnn_feature_maps, rpn_rois)
+            mrcnn_class_logits, mrcnn_class, mrcnn_bbox, my_bfc = self.classifier(mrcnn_feature_maps, rpn_rois)
 
             # Detections
             # output is [batch, num_detections, (y1, x1, y2, x2, class_id, score)] in image coordinates
-            detections = detection_layer(self.config, rpn_rois, mrcnn_class, mrcnn_bbox, image_metas)
+            detections, index = detection_layer(self.config, rpn_rois, mrcnn_class, mrcnn_bbox, image_metas)
 
             # Convert boxes to normalized coordinates
             # TODO: let DetectionLayer return normalized coordinates to avoid
@@ -1714,7 +1716,7 @@ class MaskRCNN(nn.Module):
             detections = detections.unsqueeze(0)
             mrcnn_mask = mrcnn_mask.unsqueeze(0)
 
-            return [detections, mrcnn_mask]
+            return [detections, mrcnn_mask, my_bfc, index]
 
         elif mode == 'training':
 
@@ -1749,7 +1751,7 @@ class MaskRCNN(nn.Module):
             else:
                 # Network Heads
                 # Proposal classifier and BBox regressor heads
-                mrcnn_class_logits, mrcnn_class, mrcnn_bbox = self.classifier(mrcnn_feature_maps, rois)
+                mrcnn_class_logits, mrcnn_class, mrcnn_bbox, my_bfc = self.classifier(mrcnn_feature_maps, rois)
 
                 # Create masks for detections
                 mrcnn_mask = self.mask(mrcnn_feature_maps, rois)
@@ -1790,7 +1792,7 @@ class MaskRCNN(nn.Module):
 
         # Data generators
         train_set = Dataset(train_dataset, self.config, augment=True)
-        train_generator = torch.utils.data.DataLoader(train_set, batch_size=1, shuffle=True, num_workers=4)
+        train_generator = torch.utils.data.DataLoader(train_set, batch_size=1, shuffle=True, num_workers=2)
         # val_set = Dataset(val_dataset, self.config, augment=True)
         # val_generator = torch.utils.data.DataLoader(val_set, batch_size=1, shuffle=True, num_workers=4)
 
