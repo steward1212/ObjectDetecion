@@ -19,6 +19,7 @@ import visualize
 import torch
 import torch.nn as nn
 from tempfile import TemporaryFile
+from skimage import io
 
 
 # Root directory of the project
@@ -125,6 +126,14 @@ for k, (test_name) in enumerate(test_names):
         image_bd = image[y1:y2, x1:x2]
         image_bd_mask = results[0]['masks'][:,:,xi][y1:y2, x1:x2]
 
+        C = np.where(image_bd_mask==1)
+        tmp = image_bd[C[0], C[1], :]
+        # print(tmp.shape)
+        average_color = np.uint8(np.mean(tmp, axis=0))
+        print(average_color)
+        
+        
+
 
 
         max_rate = 300/max(image_bd.shape[0], image_bd.shape[1])
@@ -160,28 +169,17 @@ for k, (test_name) in enumerate(test_names):
 
                 if(file_name[:8]!='table001'and file_name[:8]!='table003'):
 
-                    #r1 = torch.from_numpy(np.load(os.path.join('table_npy', file_name))).cuda()
                     r1 = torch.from_numpy(np.load(os.path.join('table_npy', file_name))).cuda()
 
                     similarity_2 = cos_simi(a1,r1) #cos_simi(a1.unsqueeze(0),r1.unsqueeze(0))
                     
                     filename.append(file_name)
                     similarity.append(similarity_2)
-                    print(file_name,similarity_2)
+                    # print(file_name,similarity_2)
 
             print('-----------------------')
             print(img_path, filename[similarity.index(max(similarity))], max(similarity))
-            # readref = 'easy_table/%s/renders/%s.png'%(filename[similarity.index(max(similarity))].split('.')[0].split('_')[0],filename[similarity.index(max(similarity))].split('.')[0][9:])
-
-            # loadimg = image_new
-            # refimg = cv2.imread(readref)
-
-            # result = np.zeros((max(refimg.shape[0], loadimg.shape[0]), refimg.shape[1]+loadimg.shape[1], refimg.shape[2]))
-            # result[0:loadimg.shape[0],0:loadimg.shape[1],:] = loadimg
-            # result[0:refimg.shape[0],loadimg.shape[1]:,:] = refimg
-
-            # cv2.imwrite('results/easy_table_%s_%d.png'%(img_path.split('test_img/')[1].split('.')[0],xi), result)
-            # print('=======================')
+            
 
         elif label=='chair':
 
@@ -195,19 +193,45 @@ for k, (test_name) in enumerate(test_names):
                 
                 filename.append(file_name)
                 similarity.append(similarity_2)
-                print(file_name,similarity_2)
+                # print(file_name,similarity_2)
 
             print('-----------------------')
             
             print(img_path, filename[similarity.index(max(similarity))], max(similarity))
 
-            # readref = 'rendered_chairs/%s/renders/%s.png'%(filename[similarity.index(max(similarity))].split('.')[0].split('_')[0],filename[similarity.index(max(similarity))].split('.')[0][9:])
+        elif label == 'couch':
 
-            # loadimg = image_new
-            # refimg = cv2.imread(readref)
+            file_names = next(os.walk('couch_npy'))[2]
+            
+            for i, (file_name) in enumerate(file_names):
 
-            # result = np.zeros((max(refimg.shape[0], loadimg.shape[0]), refimg.shape[1]+loadimg.shape[1], refimg.shape[2]))
-            # result[0:loadimg.shape[0],0:loadimg.shape[1],:] = loadimg
-            # result[0:refimg.shape[0],loadimg.shape[1]:,:] = refimg
+                r1 = torch.from_numpy(np.load(os.path.join('couch_npy', file_name))).cuda()
 
-            # cv2.imwrite('results/easy_chair_%s_%d.png'%(img_path.split('test_img/')[1].split('.')[0],xi), result)
+                similarity_2 = cos_simi(a1,r1) 
+                
+                filename.append(file_name)
+                similarity.append(similarity_2)
+                # print(file_name,similarity_2)
+
+            print('-----------------------')
+            
+            print(img_path, filename[similarity.index(max(similarity))], max(similarity))
+
+
+        elif label == 'tv':
+
+            file_names = next(os.walk('tv_npy'))[2]
+            
+            for i, (file_name) in enumerate(file_names):
+
+                r1 = torch.from_numpy(np.load(os.path.join('tv_npy', file_name))).cuda()
+
+                similarity_2 = cos_simi(a1,r1) 
+                
+                filename.append(file_name)
+                similarity.append(similarity_2)
+                # print(file_name,similarity_2)
+
+            print('-----------------------')
+            
+            print(img_path, filename[similarity.index(max(similarity))], max(similarity))
