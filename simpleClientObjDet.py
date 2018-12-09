@@ -22,7 +22,7 @@ CLASS_NAMES = [
     'door',
     'window']
 
-URL = "http://localhost:9000/"
+URL = "http://localhost:9001/"
 HEADERS = {'Content-type': 'application/json'}
 
 frame = cv2.imread(sys.argv[1])
@@ -41,13 +41,14 @@ rois = np.frombuffer(base64.decodebytes(objDetResult["rois"].encode("ASCII")), d
 class_id = np.frombuffer(base64.decodebytes(objDetResult["class_ids"].encode("ASCII")), dtype=np.int32).reshape((num,))
 scores = np.frombuffer(base64.decodebytes(objDetResult["scores"].encode("ASCII")), dtype=np.float32).reshape((num,))
 masks = np.frombuffer(base64.decodebytes(objDetResult["masks"].encode("ASCII")), dtype=np.uint8).reshape((inputShape[0], inputShape[1], num))
-
+models = objDetResult["models"]
 print(f"after load: {datetime.datetime.now()}")
 
 print(f"num of class: {num}")
 print(f"rois: {rois}")
 print(f"class_id: {class_id}")
 print(f"scores: {scores}")
+print(f"model: {models}")
 
-visualize.display_instances(frame, rois, masks, class_id, CLASS_NAMES, scores)
-plt.show()
+# visualize.display_instances(frame, rois, masks, class_id, CLASS_NAMES, scores)
+# plt.show()
